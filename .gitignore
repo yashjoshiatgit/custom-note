@@ -1,0 +1,20 @@
+# Default ignored files
+/node_modules/
+/target/
+/build/
+/.idea/
+*.class
+
+# Backend credentials
+/backend/src/main/resources/application.properties
+/backend/target/
+
+# Frontend credentials
+/frontend/node_modules/
+/frontend/.env
+/frontend/.env.*
+/frontend/dist/
+
+# OS generated files
+.DS_Store
+Thumbs.db
