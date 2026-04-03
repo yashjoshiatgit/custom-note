@@ -5,6 +5,9 @@
 /.idea/
 *.class
 
+start
+.idea
+
 # Backend credentials
 /backend/src/main/resources/application.properties
 /backend/target/

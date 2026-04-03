@@ -1,10 +1,83 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Stage, Layer, Text, Arrow, Group, Rect, Transformer } from 'react-konva';
+import { Stage, Layer, Text, Group, Rect, Transformer, Path } from 'react-konva';
+
+const PremiumNode = ({ node, isSelected, onSelect, onDragEnd }) => {
+    return (
+        <Group
+            id={node.id}
+            x={node.x}
+            y={node.y}
+            draggable
+            onClick={onSelect}
+            onTap={onSelect}
+            onDragEnd={(e) => {
+                onDragEnd(node.id, e.target.x(), e.target.y());
+            }}
+        >
+            {/* Main Premium Card */}
+            <Rect
+                width={150}
+                height={60}
+                fill={isSelected ? "#e0e7ff" : "#ffffff"}
+                stroke={isSelected ? "#4f46e5" : "#cbd5e1"}
+                strokeWidth={2}
+                cornerRadius={14}
+                shadowBlur={20}
+                shadowColor="rgba(0,0,0,0.12)"
+                shadowOffset={{ x: 0, y: 8 }}
+            />
+            {/* Subtle top subtle gloss/gradient effect */}
+            <Rect
+                width={150}
+                height={20}
+                fill="rgba(255,255,255,0.6)"
+                cornerRadius={[14, 14, 0, 0]}
+            />
+            <Text
+                text={node.text}
+                fontSize={15}
+                fontFamily="'Inter', sans-serif"
+                fontStyle="600"
+                fill={isSelected ? "#312e81" : "#334155"}
+                width={150}
+                height={60}
+                align="center"
+                verticalAlign="middle"
+                padding={8}
+            />
+        </Group>
+    );
+};
+
+const SmoothEdge = ({ fromX, fromY, toX, toY }) => {
+    const startX = fromX + 75; // center of 150 width
+    const startY = fromY + 60; // bottom of 60 height
+    const endX = toX + 75;     // center of target
+    const endY = toY;          // top of target
+
+    // Calculate a smooth vertical S-curve using cubic bezier
+    const path = `M ${startX} ${startY} C ${startX} ${startY + 40}, ${endX} ${endY - 40}, ${endX} ${endY}`;
+
+    return (
+        <Path
+            data={path}
+            stroke="#a5b4fc"
+            strokeWidth={4}
+            lineCap="round"
+            lineJoin="round"
+            shadowBlur={5}
+            shadowColor="rgba(165,180,252,0.4)"
+            shadowOffset={{ x: 0, y: 2 }}
+        />
+    );
+};
 
 const NoteEditorCanvas = ({ initialData, onSave }) => {
     const [nodes, setNodes] = useState([]);
     const [arrows, setArrows] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
+    const [scale, setScale] = useState(1);
+    
     const stageRef = useRef(null);
     const transformerRef = useRef(null);
     const layerRef = useRef(null);
@@ -34,14 +107,8 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
         }
     }, [selectedId]);
 
-    const handleDragMove = (e, id) => {
-        const newNodes = nodes.map(node => {
-            if (node.id === id) {
-                return { ...node, x: e.target.x(), y: e.target.y() };
-            }
-            return node;
-        });
-        setNodes(newNodes);
+    const handleNodeDragEnd = (id, newX, newY) => {
+        setNodes(nodes.map(node => (node.id === id ? { ...node, x: newX, y: newY } : node)));
     };
 
     const handleStageClick = (e) => {
@@ -54,8 +121,29 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
         }
     };
 
-    const handleNodeChange = (id, newAttrs) => {
-        setNodes(nodes.map(node => (node.id === id ? { ...node, ...newAttrs } : node)));
+    const handleWheel = (e) => {
+        e.evt.preventDefault();
+        const scaleBy = 1.05;
+        const stage = stageRef.current;
+        const oldScale = stage.scaleX();
+
+        const pointer = stage.getPointerPosition();
+
+        const mousePointTo = {
+            x: (pointer.x - stage.x()) / oldScale,
+            y: (pointer.y - stage.y()) / oldScale,
+        };
+
+        const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+        setScale(newScale);
+
+        stage.scale({ x: newScale, y: newScale });
+
+        const newPos = {
+            x: pointer.x - mousePointTo.x * newScale,
+            y: pointer.y - mousePointTo.y * newScale,
+        };
+        stage.position(newPos);
     };
 
     const saveState = () => {
@@ -69,7 +157,18 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
 
     return (
         <div className="w-full h-full bg-slate-50 relative overflow-hidden ring-1 ring-slate-200">
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <button
+                    onClick={() => {
+                        const stage = stageRef.current;
+                        stage.scale({ x: 1, y: 1 });
+                        stage.position({ x: 0, y: 0 });
+                        setScale(1);
+                    }}
+                    className="bg-white text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors shadow-sm ring-1 ring-slate-200"
+                >
+                    Reset View
+                </button>
                 <button
                     onClick={saveState}
                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
@@ -80,77 +179,51 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
 
             <Stage
                 width={window.innerWidth}
-                height={window.innerHeight - 100} // rough height minus navbar
+                height={window.innerHeight - 100}
                 onMouseDown={handleStageClick}
                 onTouchStart={handleStageClick}
+                onWheel={handleWheel}
+                draggable // allows panning the entire canvas
                 ref={stageRef}
             >
                 <Layer ref={layerRef}>
-                    {/* Render Arrows */}
+                    {/* Render Smooth Edges */}
                     {arrows.map((arrow, i) => {
                         const fromNode = nodes.find(n => n.id === arrow.from);
                         const toNode = nodes.find(n => n.id === arrow.to);
                         if (!fromNode || !toNode) return null;
 
                         return (
-                            <Arrow
+                            <SmoothEdge
                                 key={`arrow-${i}`}
-                                points={[
-                                    fromNode.x + 50, fromNode.y + 20, // rough center mapping
-                                    toNode.x - 10, toNode.y + 20
-                                ]}
-                                pointerLength={10}
-                                pointerWidth={10}
-                                fill="slate-400"
-                                stroke="#94a3b8"
-                                strokeWidth={2}
-                                tension={0.3}
+                                fromX={fromNode.x}
+                                fromY={fromNode.y}
+                                toX={toNode.x}
+                                toY={toNode.y}
                             />
                         );
                     })}
 
                     {/* Render Text Nodes */}
                     {nodes.map((node) => (
-                        <Group
+                        <PremiumNode
                             key={node.id}
-                            id={node.id}
-                            x={node.x}
-                            y={node.y}
-                            draggable
-                            onDragMove={(e) => handleDragMove(e, node.id)}
-                            onClick={() => setSelectedId(node.id)}
-                            onTap={() => setSelectedId(node.id)}
-                            onTransformEnd={(e) => {
-                                const group = e.target;
-                                handleNodeChange(node.id, {
-                                    x: group.x(),
-                                    y: group.y()
-                                });
-                            }}
-                        >
-                            <Rect
-                                width={120}
-                                height={40}
-                                fill={selectedId === node.id ? "#e0e7ff" : "white"}
-                                stroke={selectedId === node.id ? "#6366f1" : "transparent"}
-                                cornerRadius={8}
-                                shadowBlur={10}
-                                shadowColor="rgba(0,0,0,0.1)"
-                                shadowOffset={{ x: 0, y: 4 }}
-                            />
-                            <Text
-                                text={node.text}
-                                fontSize={14}
-                                fontFamily="Inter"
-                                fill="#334155"
-                                width={120}
-                                height={40}
-                                align="center"
-                                verticalAlign="middle"
-                            />
-                        </Group>
+                            node={node}
+                            isSelected={selectedId === node.id}
+                            onSelect={() => setSelectedId(node.id)}
+                            onDragEnd={handleNodeDragEnd}
+                        />
                     ))}
-                    <Transformer ref={transformerRef} resizeEnabled={false} rotateEnabled={false} />
+                    
+                    <Transformer 
+                        ref={transformerRef} 
+                        resizeEnabled={false} 
+                        rotateEnabled={false}
+                        borderStroke="#6366f1"
+                        anchorStroke="#4f46e5"
+                        anchorFill="#fff"
+                        anchorSize={8}
+                    />
                 </Layer>
             </Stage>
         </div>
