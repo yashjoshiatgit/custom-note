@@ -1,76 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Stage, Layer, Text, Group, Rect, Transformer, Path } from 'react-konva';
-
-const PremiumNode = ({ node, isSelected, onSelect, onDragEnd }) => {
-    return (
-        <Group
-            id={node.id}
-            x={node.x}
-            y={node.y}
-            draggable
-            onClick={onSelect}
-            onTap={onSelect}
-            onDragEnd={(e) => {
-                onDragEnd(node.id, e.target.x(), e.target.y());
-            }}
-        >
-            {/* Main Premium Card */}
-            <Rect
-                width={150}
-                height={60}
-                fill={isSelected ? "#e0e7ff" : "#ffffff"}
-                stroke={isSelected ? "#4f46e5" : "#cbd5e1"}
-                strokeWidth={2}
-                cornerRadius={14}
-                shadowBlur={20}
-                shadowColor="rgba(0,0,0,0.12)"
-                shadowOffset={{ x: 0, y: 8 }}
-            />
-            {/* Subtle top subtle gloss/gradient effect */}
-            <Rect
-                width={150}
-                height={20}
-                fill="rgba(255,255,255,0.6)"
-                cornerRadius={[14, 14, 0, 0]}
-            />
-            <Text
-                text={node.text}
-                fontSize={15}
-                fontFamily="'Inter', sans-serif"
-                fontStyle="600"
-                fill={isSelected ? "#312e81" : "#334155"}
-                width={150}
-                height={60}
-                align="center"
-                verticalAlign="middle"
-                padding={8}
-            />
-        </Group>
-    );
-};
-
-const SmoothEdge = ({ fromX, fromY, toX, toY }) => {
-    const startX = fromX + 75; // center of 150 width
-    const startY = fromY + 60; // bottom of 60 height
-    const endX = toX + 75;     // center of target
-    const endY = toY;          // top of target
-
-    // Calculate a smooth vertical S-curve using cubic bezier
-    const path = `M ${startX} ${startY} C ${startX} ${startY + 40}, ${endX} ${endY - 40}, ${endX} ${endY}`;
-
-    return (
-        <Path
-            data={path}
-            stroke="#a5b4fc"
-            strokeWidth={4}
-            lineCap="round"
-            lineJoin="round"
-            shadowBlur={5}
-            shadowColor="rgba(165,180,252,0.4)"
-            shadowOffset={{ x: 0, y: 2 }}
-        />
-    );
-};
+import { Stage, Layer, Transformer } from 'react-konva';
+import PremiumNode from './PremiumNode';
+import SmoothEdge from './SmoothEdge';
 
 const NoteEditorCanvas = ({ initialData, onSave }) => {
     const [nodes, setNodes] = useState([]);
@@ -90,7 +21,7 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
             setNodes(dataNodes);
             setArrows(dataArrows);
         } else {
-            setNodes([{ id: '1', type: 'text', x: 200, y: 200, text: 'Main Topic' }]);
+            setNodes([{ id: '1', type: 'text', x: window.innerWidth / 2 - 75, y: 150, text: 'Main Topic' }]);
         }
     }, [initialData]);
 
@@ -156,8 +87,8 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
     };
 
     return (
-        <div className="w-full h-full bg-slate-50 relative overflow-hidden ring-1 ring-slate-200">
-            <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <div className="w-full h-full bg-slate-50 relative overflow-hidden canvas-area-step">
+            <div className="absolute top-4 right-4 z-10 flex gap-3">
                 <button
                     onClick={() => {
                         const stage = stageRef.current;
@@ -165,21 +96,25 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
                         stage.position({ x: 0, y: 0 });
                         setScale(1);
                     }}
-                    className="bg-white text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 transition-colors shadow-sm ring-1 ring-slate-200"
+                    className="bg-white/90 backdrop-blur-sm text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white transition-all shadow-sm ring-1 ring-slate-200 hover:-translate-y-0.5"
                 >
                     Reset View
                 </button>
                 <button
                     onClick={saveState}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+                    className="save-canvas-step bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 hover:-translate-y-0.5 border border-transparent"
                 >
                     Save Canvas
                 </button>
             </div>
 
+            {/* Premium background grid */}
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03]" 
+                 style={{ backgroundImage: 'radial-gradient(#4f46e5 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
+
             <Stage
                 width={window.innerWidth}
-                height={window.innerHeight - 100}
+                height={window.innerHeight - 80} // adjusted for header
                 onMouseDown={handleStageClick}
                 onTouchStart={handleStageClick}
                 onWheel={handleWheel}
@@ -220,9 +155,11 @@ const NoteEditorCanvas = ({ initialData, onSave }) => {
                         resizeEnabled={false} 
                         rotateEnabled={false}
                         borderStroke="#6366f1"
+                        borderStrokeWidth={2}
                         anchorStroke="#4f46e5"
                         anchorFill="#fff"
-                        anchorSize={8}
+                        anchorSize={10}
+                        anchorCornerRadius={5}
                     />
                 </Layer>
             </Stage>

@@ -2,10 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../app/store';
 import api from '../api/axiosInstance';
-import { Plus, FileText, Clock, LogOut, Settings, Trash2 } from 'lucide-react';
+import Navbar from '../components/layout/Navbar';
+import NoteGrid from '../components/notes/NoteGrid';
+import SetupGuide from '../components/onboarding/SetupGuide';
+import { Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
-    const { user, logoutUser, notes, setNotes } = useStore();
+    const { user, notes, setNotes } = useStore();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
@@ -45,7 +49,7 @@ const Dashboard = () => {
 
     const handleDeleteNote = async (e, id) => {
         e.stopPropagation();
-        if (!confirm('Are you sure you want to delete this note?')) return;
+        if (!window.confirm('Are you sure you want to delete this note?')) return;
 
         try {
             await api.delete(`/notes/${id}`);
@@ -55,133 +59,81 @@ const Dashboard = () => {
         }
     };
 
-    const handleLogout = async () => {
-        try {
-            await api.post('/auth/logout');
-            logoutUser();
-            navigate('/login');
-        } catch (error) {
-            console.error('Logout failed', error);
+    const dashboardTourSteps = [
+        {
+            target: '.navbar-tour-step',
+            content: 'Welcome to NoteFlow! Your centralized hub for visual map note-taking. You can access settings and account details here.',
+            disableBeacon: true,
+            placement: 'bottom',
+        },
+        {
+            target: '.create-note-step',
+            content: 'Click here to create your first visual map or traditional note.',
+            placement: 'bottom-end',
+        },
+        {
+            target: '.note-card-step',
+            content: 'Once you create notes, they will appear here as cards. You can click on them to edit or view their contents.',
+            placement: 'top',
+        },
+        {
+            target: '.history-btn-step',
+            content: 'Every change is saved. You can always view the history of your note and revert to older versions.',
+            placement: 'top',
         }
-    };
+    ];
 
-    if (loading) return <div className="p-8 text-center text-slate-500">Loading your workspace...</div>;
+    if (loading) return (
+        <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+            <div className="relative">
+                <div className="h-16 w-16 rounded-full border-t-4 border-b-4 border-indigo-600 animate-spin"></div>
+                <div className="mt-4 text-center text-indigo-600 font-semibold tracking-widest animate-pulse">LOADING</div>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* Header */}
-            <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16 items-center">
-                        <div className="flex-shrink-0 flex items-center">
-                            <div className="bg-indigo-600 p-2 rounded-lg mr-3">
-                                <FileText className="h-6 w-6 text-white" />
-                            </div>
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                                NoteFlow
-                            </span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="text-sm font-medium text-slate-700 hidden sm:block">
-                                Hey, {user?.name}
-                            </div>
-                            {user?.role === 'ADMIN' && (
-                                <button
-                                    onClick={() => navigate('/admin')}
-                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors"
-                                    title="Admin Panel"
-                                >
-                                    <Settings className="h-5 w-5" />
-                                </button>
-                            )}
-                            <button
-                                onClick={handleLogout}
-                                className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center gap-2"
-                                title="Sign out"
-                            >
-                                <LogOut className="h-5 w-5" />
-                                <span className="text-sm font-medium hidden sm:block">Sign out</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
+        <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans">
+            <SetupGuide steps={dashboardTourSteps} tourKey="dashboard" />
+            <Navbar />
 
             {/* Main Content */}
-            <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-                <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Your Notes</h1>
-                    <button
+            <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full relative">
+                {/* Background decorative blob */}
+                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                <div className="absolute top-40 left-0 -ml-20 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+                    <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Your Workspace</h1>
+                        <p className="text-slate-500 mt-1 font-medium">Manage and organize your interactive visual notes.</p>
+                    </motion.div>
+                    
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleCreateNote}
                         disabled={isCreating}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        className="create-note-step flex-shrink-0 inline-flex items-center px-5 py-2.5 border border-transparent rounded-xl shadow-lg shadow-indigo-200 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                         <Plus className="-ml-1 mr-2 h-5 w-5" />
-                        {isCreating ? 'Creating...' : 'New Note'}
-                    </button>
+                        {isCreating ? 'Creating...' : 'New Visual Map'}
+                    </motion.button>
                 </div>
 
-                {notes.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 shadow-sm">
-                        <FileText className="mx-auto h-12 w-12 text-slate-300" />
-                        <h3 className="mt-4 text-sm font-medium text-slate-900">No notes yet</h3>
-                        <p className="mt-1 text-sm text-slate-500">Get started by creating a new visual note.</p>
-                        <div className="mt-6">
-                            <button onClick={handleCreateNote} className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-                                <Plus className="-ml-1 mr-2 h-5 w-5" />
-                                New Note
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {notes.map((note) => (
-                            <div
-                                key={note.id}
-                                onClick={() => navigate(`/note/${note.id}`)}
-                                className="group relative bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer overflow-hidden flex flex-col h-48"
-                            >
-                                <div className="p-5 flex-1 relative">
-                                    <h3 className="text-lg font-semibold text-slate-900 truncate pr-8 group-hover:text-indigo-600 transition-colors">
-                                        {note.title}
-                                    </h3>
-
-                                    {/* Action buttons (appear on hover) */}
-                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={(e) => handleDeleteNote(e, note.id)}
-                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                            title="Delete note"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-
-                                    <div className="mt-4">
-                                        <p className="text-sm text-slate-500 line-clamp-3">
-                                            {note.originalContent || "Blank visual note. Click to start editing on the canvas."}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-                                    <div className="flex items-center text-xs text-slate-500">
-                                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                                        {new Date(note.updatedAt || note.createdAt).toLocaleDateString()}
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigate(`/note/${note.id}/history`);
-                                        }}
-                                        className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-                                    >
-                                        History
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="relative z-10">
+                    <NoteGrid 
+                        notes={notes} 
+                        navigate={navigate} 
+                        handleDeleteNote={handleDeleteNote} 
+                        handleCreateNote={handleCreateNote} 
+                    />
+                </div>
             </main>
         </div>
     );
